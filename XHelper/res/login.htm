@@ -1,0 +1,200 @@
+<html>
+	<head>
+		<title></title>
+		<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+		<style>
+			html  { background:transparent; overflow: hidden; }
+			body { width: 495px; height: 409px; overflow:hidden; margin: 0; padding: 0;}
+			
+			.fream {
+				width: *;
+				height: *;
+				background: gold;
+				border:1px solid black;
+			}
+			
+			.fream .titlebar {
+				width: *;
+				height: 256px;
+				background-image: url(images/master-joda.png);
+			}
+			
+			.fream .client {
+				position: relative;
+				width: *;
+				height: 151px;
+				background: white;
+			}
+			
+			button#close {
+				padding: 0px;
+				margin-right: 0px;
+				border: 0px;
+				height: 20px;
+				float: right;
+				width: 45px;
+				background-image: url(images/app_window_close.png); 
+			}
+			
+			button#close:hover {
+				background-image: url(images/app_window_close_hover.png); 
+			}
+
+			button#close:active {
+				background-image: url(images/app_window_close_active.png); 
+			}
+			
+			input.glow { background:white; border:1px solid threedshadow; border-radius:3px; }
+    
+			input.glow:focus {
+				border-color:highlight;
+				outline:5px glow highlight -1px;
+				transition: outline(linear,0.25s) border-color(linear,0.25s);
+			}
+			
+			popup.bubble {
+				prototype: BubblePopup;
+				background-color: transparent;
+				width: 148px;
+				height: 30px;
+				padding-top: 4dip;
+				cursor: default;
+				margin:2dip;
+			}
+			popup.bubble > .content {
+			  margin: 6dip;
+			}
+		</style>
+		
+		<script type="text/tiscript">
+			include "popup.tis"
+			
+			function self.ready() {
+				// positioning in the middle of the screen:
+				var (sx,sy,sw,sh) = view.screenBox(#workarea, #rectw);
+				var (w,h) = self.$(body).box(#dimension);
+				view.move( sx + (sw - w) / 2, sy + (sh - h) / 2, w, h);
+			}
+			
+			function movable() // install movable window handler
+			{
+				var xoff,yoff;
+				var dragging = false;
+				var titlebar = $(div#l_titlebar);
+
+				function doDrag() {
+					while( dragging )
+						view.doEvent();
+				}
+
+				function onMouseDown(evt) {
+					if( evt.target !== titlebar )
+						return false;
+					xoff = evt.x;
+					yoff = evt.y;
+					dragging = true;
+					view.root.capture(true);
+					doDrag();
+					
+					return true;
+				}
+
+				function onMouseMove(evt) {
+					if( dragging ) {
+						view.move( evt.xScreen - xoff, evt.yScreen - yoff, true); // true - x,y are coordinates of the client area on the screen
+						return true;
+					}
+					return false;
+				}
+
+				function stopDrag() {
+					if(dragging) {
+						dragging = false;
+						view.root.capture(false);
+						return true;
+					}
+					return false;
+				}
+
+				function onMouseUp(evt) { return stopDrag(); }
+				function onKeyDown(evt) { if(evt.keyCode == Event.VK_ESCAPE ) return stopDrag(); }
+
+				// hookup event handlers:
+				view.root.subscribe(onMouseDown, Event.MOUSE, Event.MOUSE_DOWN );
+				view.root.subscribe(onMouseUp, Event.MOUSE, Event.MOUSE_UP );
+				view.root.subscribe(onMouseMove, Event.MOUSE, Event.MOUSE_MOVE );
+				view.root.subscribe(onKeyDown, Event.KEY, Event.KEY_DOWN );
+				return false;
+			}
+			movable();
+			
+			$(#close).on("click",function() {
+				view.close();
+				view.OnCloseClick();			// 调用C++程序处理
+			});
+			
+			$(#login).on("click",function() {
+				var un = $(#userName).value;
+				if (un == "") {
+					$(div.content).text = "请您输入账号后再登录";
+					var (x,y) = $(#userName).box(#position, #borde, #root);
+					$(#userName).popup($(popup.bubble), x-50, y+10);
+					$(#userName).focus = true;
+					return;
+				} 
+				
+				var pw = $(#passWord).value;
+				if (pw == "") {
+					$(div.content).text = "请您输入密码后再登录";
+					var (x,y) = $(#passWord).box(#position, #borde, #root);
+					$(#passWord).popup($(popup.bubble), x-50, y+10);
+					$(#passWord).focus = true;
+					return;
+				}
+				
+				function onProgress() { $(#login).text = "取消"; }
+				function onLoginFail(msg) { $(#stsbar).text = msg;  $(#login).text = "登录"; }
+				view.OnLoginClick(un, pw, onProgress, onLoginFail);		// 调用C++程序处理
+			});
+			
+		</script>
+	</head>
+	
+	<body>
+		<div .fream>
+			<div .titlebar #l_titlebar>
+				<button #close></button>
+			</div>
+			
+			<div .client>
+				<div style="position: absolute; top: 10px; left: 60px;">
+					<label>账号</label>
+					<input|text#userName class=glow />
+					<label>注册账号</label>
+				</div>
+				
+				<div style="position: absolute; top: 40px; left: 60px;">
+					<label>密码</label>
+					<input|password#passWord class=glow />
+					<label>找回密码</label>
+				</div>
+				<popup .bubble>
+					<div .content></div>
+				</popup>
+				<div style="background-image: url(images/master-joda.png); position: absolute; top: 40px; left: 0px"> </div>
+				
+				<div style="position: absolute; top: 70px; left: 60px;">
+					<button|checkbox(checkboxButton) value=true style="margin-left: 30px;">记住密码</button>
+					<button|checkbox(checkboxButton) value=true style="margin-left: 14px;">自动登录</button>
+				</div>
+				
+				<div style="position: absolute; top: 110px; left: 90px;">
+					<button #login style="width: 156px; height: 26px;"><span style="width: 156px; height: 26px;">登录</span></button>
+				</div>
+				<div style="position: absolute; top: 140px; left: 90px;">
+					<span #stsbar></span>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
